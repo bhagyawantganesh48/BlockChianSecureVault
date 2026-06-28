@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% block title %}Profile — Password Vault{% endblock %}
+{% block page_heading %}Profile{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+    <div class="col-lg-4">
+        <div class="glass-panel p-4 text-center">
+            <div class="profile-avatar mb-3">
+                <i class="bi bi-person-circle"></i>
+            </div>
+            <h4>{{ user.username }}</h4>
+            <p class="text-muted">{{ user.email }}</p>
+            <span class="badge bg-info">Member since {{ user.created_at }}</span>
+        </div>
+    </div>
+    <div class="col-lg-8">
+        <div class="glass-panel p-4 mb-4">
+            <h5><i class="bi bi-bar-chart"></i> Account Statistics</h5>
+            <div class="row g-3 mt-2">
+                <div class="col-md-4">
+                    <div class="stat-mini">
+                        <h3>{{ stats.passwords }}</h3>
+                        <p class="text-muted mb-0">Stored Passwords</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="stat-mini">
+                        <h3>{{ stats.blocks }}</h3>
+                        <p class="text-muted mb-0">Blockchain Blocks</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="stat-mini">
+                        <h3><i class="bi bi-shield-lock text-info"></i></h3>
+                        <p class="text-muted mb-0">AES-256 Protected</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="glass-panel p-4">
+            <h5><i class="bi bi-info-circle"></i> Security Information</h5>
+            <ul class="list-unstyled mt-3 mb-0">
+                <li class="mb-2"><i class="bi bi-check-circle text-success"></i> Master password stored as bcrypt hash</li>
+                <li class="mb-2"><i class="bi bi-check-circle text-success"></i> Vault passwords encrypted with AES-256 (Fernet)</li>
+                <li class="mb-2"><i class="bi bi-check-circle text-success"></i> All operations logged to immutable blockchain</li>
+                <li class="mb-2"><i class="bi bi-check-circle text-success"></i> Session timeout after 30 minutes of inactivity</li>
+                <li><i class="bi bi-check-circle text-success"></i> CSRF protection on all forms</li>
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}

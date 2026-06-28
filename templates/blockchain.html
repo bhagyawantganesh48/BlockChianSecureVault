@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+{% block title %}Blockchain Explorer — Password Vault{% endblock %}
+{% block page_heading %}Blockchain Explorer{% endblock %}
+
+{% block content %}
+<div class="chain-banner glass-panel p-4 mb-4 {% if chain_valid %}chain-valid{% else %}chain-invalid{% endif %}">
+    <div class="d-flex align-items-center gap-3">
+        <i class="bi {% if chain_valid %}bi-check-circle-fill text-success{% else %}bi-x-circle-fill text-danger{% endif %} display-6"></i>
+        <div>
+            <h5 class="mb-1">Verification Status: {% if chain_valid %}Valid Chain{% else %}Chain Broken{% endif %}</h5>
+            <p class="text-muted mb-0">{{ chain_message }}</p>
+        </div>
+    </div>
+</div>
+
+{% if blocks %}
+<div class="row g-4">
+    {% for item in blocks %}
+    {% set block = item.block %}
+    <div class="col-lg-6">
+        <div class="block-card glass-panel p-4 {% if item.valid %}block-valid{% else %}block-invalid{% endif %}">
+            <div class="d-flex justify-content-between align-items-start mb-3">
+                <h5><i class="bi bi-box"></i> Block #{{ block.block_number }}</h5>
+                <span class="badge {% if item.valid %}bg-success{% else %}bg-danger{% endif %}">
+                    {% if item.valid %}Valid{% else %}Invalid{% endif %}
+                </span>
+            </div>
+            <ul class="block-details list-unstyled mb-0">
+                <li><strong>Timestamp:</strong> {{ block.timestamp }}</li>
+                <li><strong>Website:</strong> {{ block.website }}</li>
+                <li><strong>Action:</strong> <span class="badge bg-info">{{ block.action }}</span></li>
+                <li><strong>User:</strong> {{ block.user }}</li>
+                <li><strong>Nonce:</strong> {{ block.nonce }}</li>
+                <li class="hash-field"><strong>Previous Hash:</strong>
+                    <code>{{ block.previous_hash }}</code></li>
+                <li class="hash-field"><strong>Current Hash:</strong>
+                    <code>{{ block.current_hash }}</code></li>
+            </ul>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="glass-panel p-5 text-center">
+    <i class="bi bi-link-45deg display-4 text-muted"></i>
+    <p class="text-muted mt-3">No blocks yet. Password operations will appear here as immutable audit records.</p>
+</div>
+{% endif %}
+{% endblock %}

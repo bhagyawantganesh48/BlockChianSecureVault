@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+{% block title %}Password Generator — Password Vault{% endblock %}
+{% block page_heading %}Password Generator{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+    <div class="col-lg-5">
+        <div class="glass-panel p-4">
+            <form method="POST" action="{{ url_for('vault.generator') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <div class="mb-3">
+                    <label class="form-label">Length: <span id="lengthValue">16</span></label>
+                    <input type="range" class="form-range" name="length" id="lengthRange"
+                           min="8" max="64" value="16">
+                </div>
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" name="uppercase" id="uppercase" checked>
+                    <label class="form-check-label" for="uppercase">Uppercase (A-Z)</label>
+                </div>
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" name="lowercase" id="lowercase" checked>
+                    <label class="form-check-label" for="lowercase">Lowercase (a-z)</label>
+                </div>
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" name="numbers" id="numbers" checked>
+                    <label class="form-check-label" for="numbers">Numbers (0-9)</label>
+                </div>
+                <div class="form-check mb-4">
+                    <input class="form-check-input" type="checkbox" name="symbols" id="symbols" checked>
+                    <label class="form-check-label" for="symbols">Symbols (!@#$...)</label>
+                </div>
+                <button type="submit" class="btn btn-info w-100">
+                    <i class="bi bi-magic"></i> Generate Password
+                </button>
+            </form>
+            {% if error %}
+            <div class="alert alert-danger mt-3 mb-0">{{ error }}</div>
+            {% endif %}
+        </div>
+    </div>
+    <div class="col-lg-7">
+        <div class="glass-panel p-4 h-100">
+            <h5><i class="bi bi-key"></i> Generated Password</h5>
+            {% if result %}
+            <div class="generated-password mt-3">
+                <code id="generatedPassword">{{ result.password }}</code>
+                <button class="btn btn-outline-info copy-text-btn" data-target="#generatedPassword">
+                    <i class="bi bi-clipboard"></i> Copy
+                </button>
+            </div>
+            <div class="mt-4">
+                <span class="badge bg-{{ result.analysis.color }} fs-6">{{ result.analysis.label }}</span>
+                <span class="text-muted ms-2">Entropy: {{ result.analysis.entropy }} bits</span>
+            </div>
+            <ul class="list-unstyled mt-3 small">
+                <li><i class="bi bi-check2 text-success"></i> Length: {{ result.analysis.length }}</li>
+                <li><i class="bi bi-{% if result.analysis.checks.uppercase %}check2 text-success{% else %}x text-danger{% endif %}"></i> Uppercase</li>
+                <li><i class="bi bi-{% if result.analysis.checks.lowercase %}check2 text-success{% else %}x text-danger{% endif %}"></i> Lowercase</li>
+                <li><i class="bi bi-{% if result.analysis.checks.digits %}check2 text-success{% else %}x text-danger{% endif %}"></i> Digits</li>
+                <li><i class="bi bi-{% if result.analysis.checks.special %}check2 text-success{% else %}x text-danger{% endif %}"></i> Special Characters</li>
+            </ul>
+            {% else %}
+            <p class="text-muted mt-3">Configure options and click Generate to create a secure password.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    const range = document.getElementById('lengthRange');
+    const label = document.getElementById('lengthValue');
+    if (range && label) {
+        range.addEventListener('input', () => { label.textContent = range.value; });
+    }
+</script>
+{% endblock %}

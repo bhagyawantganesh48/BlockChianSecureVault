@@ -1,0 +1,392 @@
+/* Blockchain-Based Secure Password Vault — Cybersecurity Theme */
+
+:root {
+    --bg-primary: #0a0e17;
+    --bg-secondary: #111827;
+    --glass-bg: rgba(17, 24, 39, 0.65);
+    --glass-border: rgba(255, 255, 255, 0.08);
+    --accent: #06b6d4;
+    --accent-glow: rgba(6, 182, 212, 0.35);
+    --text-primary: #f1f5f9;
+    --text-muted: #94a3b8;
+    --sidebar-width: 260px;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body.app-body {
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    min-height: 100vh;
+    overflow-x: hidden;
+}
+
+.bg-gradient {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background:
+        radial-gradient(ellipse at 20% 20%, rgba(6, 182, 212, 0.15) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 80%, rgba(139, 92, 246, 0.12) 0%, transparent 50%),
+        radial-gradient(ellipse at 50% 50%, rgba(16, 185, 129, 0.08) 0%, transparent 60%),
+        linear-gradient(135deg, #0a0e17 0%, #1a1f35 50%, #0f172a 100%);
+}
+
+/* Glassmorphism */
+.glass-panel {
+    background: var(--glass-bg);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.glass-panel-sm {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--glass-border);
+    border-radius: 10px;
+    padding: 0.5rem 0.75rem;
+}
+
+.glass-alert {
+    backdrop-filter: blur(8px);
+    border: 1px solid var(--glass-border);
+}
+
+/* Sidebar */
+#wrapper {
+    min-height: 100vh;
+}
+
+.sidebar {
+    width: var(--sidebar-width);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    left: 0;
+    top: 0;
+    z-index: 1000;
+    border-radius: 0;
+    border-right: 1px solid var(--glass-border);
+    transition: transform 0.3s ease;
+}
+
+.brand {
+    color: var(--text-primary);
+    font-size: 1.25rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.sidebar .nav-link {
+    color: var(--text-muted);
+    padding: 0.75rem 1rem;
+    border-radius: 10px;
+    margin-bottom: 0.25rem;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.sidebar .nav-link:hover,
+.sidebar .nav-link.active {
+    color: var(--accent);
+    background: rgba(6, 182, 212, 0.1);
+}
+
+.sidebar-footer {
+    margin-top: auto;
+}
+
+.user-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+#page-content {
+    margin-left: var(--sidebar-width);
+    min-height: 100vh;
+}
+
+.topbar {
+    border-radius: 0;
+    border-bottom: 1px solid var(--glass-border);
+}
+
+.page-heading {
+    font-weight: 600;
+}
+
+.content-area {
+    animation: fadeIn 0.4s ease;
+}
+
+/* Auth pages */
+.auth-wrapper {
+    position: relative;
+    z-index: 1;
+}
+
+.auth-card {
+    width: 100%;
+    max-width: 440px;
+    padding: 2.5rem;
+}
+
+/* Stat cards */
+.stat-card {
+    padding: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 40px var(--accent-glow);
+}
+
+.stat-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+}
+
+.stat-card h3 {
+    margin: 0;
+    font-size: 1.75rem;
+    font-weight: 700;
+}
+
+.stat-mini {
+    text-align: center;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 12px;
+}
+
+.stat-mini h3 {
+    margin-bottom: 0.25rem;
+}
+
+/* Chain status */
+.chain-status {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    border-radius: 12px;
+}
+
+.chain-status.valid {
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.chain-status.valid i {
+    color: #10b981;
+    font-size: 2rem;
+}
+
+.chain-status.invalid {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.chain-status.invalid i {
+    color: #ef4444;
+    font-size: 2rem;
+}
+
+/* Blockchain cards */
+.block-card {
+    transition: transform 0.2s ease;
+}
+
+.block-card:hover {
+    transform: translateY(-2px);
+}
+
+.block-valid {
+    border-left: 4px solid #10b981;
+}
+
+.block-invalid {
+    border-left: 4px solid #ef4444;
+}
+
+.chain-banner.chain-valid {
+    border-left: 4px solid #10b981;
+}
+
+.chain-banner.chain-invalid {
+    border-left: 4px solid #ef4444;
+}
+
+.block-details li {
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.hash-field code {
+    display: block;
+    word-break: break-all;
+    font-size: 0.75rem;
+    color: var(--accent);
+    margin-top: 0.25rem;
+    padding: 0.5rem;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 6px;
+}
+
+/* Password generator */
+.generated-password {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.generated-password code {
+    font-size: 1.25rem;
+    color: var(--accent);
+    padding: 0.75rem 1rem;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 8px;
+    flex: 1;
+    min-width: 200px;
+}
+
+/* Strength meter */
+.strength-meter .progress {
+    height: 6px;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.strength-details {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.strength-label {
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+    letter-spacing: 0.05em;
+}
+
+.strength-label.weak { color: #ef4444; }
+.strength-label.medium { color: #f59e0b; }
+.strength-label.strong { color: #10b981; }
+
+/* Profile */
+.profile-avatar i {
+    font-size: 5rem;
+    color: var(--accent);
+}
+
+/* Forms */
+.form-control,
+.form-select {
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid var(--glass-border);
+    color: var(--text-primary);
+}
+
+.form-control:focus,
+.form-select:focus {
+    background: rgba(0, 0, 0, 0.35);
+    border-color: var(--accent);
+    color: var(--text-primary);
+    box-shadow: 0 0 0 0.2rem var(--accent-glow);
+}
+
+.input-group-text {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--glass-border);
+    color: var(--text-muted);
+}
+
+.table-dark {
+    --bs-table-bg: transparent;
+    --bs-table-hover-bg: rgba(6, 182, 212, 0.05);
+}
+
+.password-mask {
+    letter-spacing: 2px;
+}
+
+/* Loading overlay */
+.loading-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+    animation: fadeIn 0.5s ease;
+}
+
+.animate-slide-up {
+    animation: slideUp 0.5s ease forwards;
+}
+
+.delay-1 { animation-delay: 0.1s; opacity: 0; }
+.delay-2 { animation-delay: 0.2s; opacity: 0; }
+.delay-3 { animation-delay: 0.3s; opacity: 0; }
+
+/* Responsive */
+@media (max-width: 991.98px) {
+    .sidebar {
+        transform: translateX(-100%);
+    }
+
+    .sidebar.show {
+        transform: translateX(0);
+    }
+
+    #page-content {
+        margin-left: 0;
+    }
+}
+
+/* Toast copy feedback */
+.copy-toast {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    z-index: 9998;
+    animation: fadeIn 0.3s ease;
+}

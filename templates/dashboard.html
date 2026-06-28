@@ -1,0 +1,122 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard — Password Vault{% endblock %}
+{% block page_heading %}Dashboard{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="row g-4 mb-4">
+    <div class="col-md-6 col-xl-3">
+        <div class="stat-card glass-panel animate-slide-up">
+            <div class="stat-icon bg-info-subtle"><i class="bi bi-key-fill text-info"></i></div>
+            <div>
+                <h3>{{ total_passwords }}</h3>
+                <p class="text-muted mb-0">Total Passwords</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-xl-3">
+        <div class="stat-card glass-panel animate-slide-up delay-1">
+            <div class="stat-icon bg-success-subtle"><i class="bi bi-shield-fill-check text-success"></i></div>
+            <div>
+                <h3>{{ strong_count }}</h3>
+                <p class="text-muted mb-0">Strong Passwords</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-xl-3">
+        <div class="stat-card glass-panel animate-slide-up delay-2">
+            <div class="stat-icon bg-danger-subtle"><i class="bi bi-exclamation-triangle text-danger"></i></div>
+            <div>
+                <h3>{{ weak_count }}</h3>
+                <p class="text-muted mb-0">Weak Passwords</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-xl-3">
+        <div class="stat-card glass-panel animate-slide-up delay-3">
+            <div class="stat-icon bg-warning-subtle"><i class="bi bi-link-45deg text-warning"></i></div>
+            <div>
+                <h3>{{ block_count }}</h3>
+                <p class="text-muted mb-0">Blockchain Blocks</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-lg-6">
+        <div class="glass-panel p-4 h-100">
+            <h5><i class="bi bi-pie-chart"></i> Passwords by Category</h5>
+            <canvas id="categoryChart" height="220"></canvas>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="glass-panel p-4 h-100">
+            <h5><i class="bi bi-bar-chart"></i> Strength Distribution</h5>
+            <canvas id="strengthChart" height="220"></canvas>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-8">
+        <div class="glass-panel p-4">
+            <h5><i class="bi bi-clock-history"></i> Recent Activity</h5>
+            {% if recent_activity %}
+            <div class="table-responsive">
+                <table class="table table-dark table-hover align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Block</th>
+                            <th>Action</th>
+                            <th>Website</th>
+                            <th>Timestamp</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for block in recent_activity %}
+                        <tr>
+                            <td><span class="badge bg-info">#{{ block.block_number }}</span></td>
+                            <td>{{ block.action }}</td>
+                            <td>{{ block.website }}</td>
+                            <td class="text-muted small">{{ block.timestamp }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-muted mb-0">No blockchain activity yet. Add a password to create your first block.</p>
+            {% endif %}
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="glass-panel p-4 h-100">
+            <h5><i class="bi bi-shield-check"></i> Chain Status</h5>
+            <div class="chain-status mt-3 {% if chain_valid %}valid{% else %}invalid{% endif %}">
+                <i class="bi {% if chain_valid %}bi-check-circle-fill{% else %}bi-x-circle-fill{% endif %}"></i>
+                <div>
+                    <strong>{% if chain_valid %}Verified{% else %}Broken{% endif %}</strong>
+                    <p class="text-muted small mb-0">{{ chain_message }}</p>
+                </div>
+            </div>
+            <a href="{{ url_for('vault.blockchain_explorer') }}" class="btn btn-outline-info w-100 mt-4">
+                View Blockchain
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    window.dashboardData = {
+        categories: {{ category_counts | tojson }},
+        strength: {{ strength_distribution | tojson }}
+    };
+</script>
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% endblock %}
