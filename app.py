@@ -22,10 +22,18 @@ def create_app():
 
     try:
         os.makedirs(config.INSTANCE_DIR, exist_ok=True)
+    except Exception as e:
+        print(f"Warning: Could not create instance directory. {e}")
+
+    try:
         database.init_db()
+    except Exception as e:
+        print(f"Warning: Database initialization skipped or failed. {e}")
+
+    try:
         encryption_manager.load_or_create_key()
     except Exception as e:
-        print(f"Warning: Initialization skipped during build. {e}")
+        print(f"Warning: Encryption key load/create failed. {e}")
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(vault_bp)
