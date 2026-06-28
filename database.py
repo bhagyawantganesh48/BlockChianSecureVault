@@ -10,7 +10,7 @@ from typing import Any, List, Optional, Tuple
 import config
 from models import Block, User, VaultEntry, utc_now_iso
 
-DB_URL = os.environ.get("DATABASE_URL")
+DB_URL = os.environ.get("POSTGRES_URL", os.environ.get("DATABASE_URL"))
 if DB_URL:
     import psycopg2
     from psycopg2.extras import DictCursor
