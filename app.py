@@ -20,9 +20,12 @@ def create_app():
     app.config.from_object(config)
     app.config["PERMANENT_SESSION_LIFETIME"] = config.PERMANENT_SESSION_LIFETIME
 
-    os.makedirs(config.INSTANCE_DIR, exist_ok=True)
-    database.init_db()
-    encryption_manager.load_or_create_key()
+    try:
+        os.makedirs(config.INSTANCE_DIR, exist_ok=True)
+        database.init_db()
+        encryption_manager.load_or_create_key()
+    except Exception as e:
+        print(f"Warning: Initialization skipped during build. {e}")
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(vault_bp)
