@@ -62,9 +62,9 @@ def sanitize_input(value: str) -> str:
 
 
 def generate_csrf_token() -> str:
-    token = secrets.token_hex(32)
-    session["csrf_token"] = token
-    return token
+    if "csrf_token" not in session:
+        session["csrf_token"] = secrets.token_hex(32)
+    return session["csrf_token"]
 
 
 def validate_csrf_token(token: str) -> bool:
