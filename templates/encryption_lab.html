@@ -1,0 +1,597 @@
+{% extends 'base.html' %}
+{% block title %}Encryption Lab – SecureVault{% endblock %}
+{% block page_heading %}🔬 Encryption Lab{% endblock %}
+
+{% block extra_head %}
+<style>
+  .lab-card {
+    background: rgba(10,20,35,0.75);
+    border: 1px solid rgba(0,200,255,0.15);
+    border-radius: 16px;
+    backdrop-filter: blur(12px);
+  }
+  .step-card {
+    background: rgba(0,200,255,0.04);
+    border: 1px solid rgba(0,200,255,0.12);
+    border-radius: 12px;
+    transition: border-color .3s, box-shadow .3s;
+    position: relative;
+    overflow: hidden;
+  }
+  .step-card.active {
+    border-color: rgba(0,200,255,0.6);
+    box-shadow: 0 0 20px rgba(0,200,255,0.15);
+  }
+  .step-card .step-num {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: rgba(0,200,255,0.12);
+    border: 2px solid rgba(0,200,255,0.3);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: .85rem; color: #00c8ff; flex-shrink: 0;
+  }
+  .step-card.active .step-num {
+    background: rgba(0,200,255,0.3);
+    border-color: #00c8ff;
+    box-shadow: 0 0 12px rgba(0,200,255,0.5);
+  }
+  .step-arrow {
+    text-align: center; font-size: 1.5rem; color: rgba(0,200,255,0.4);
+    margin: .25rem 0;
+    animation: pulse-arrow 2s ease-in-out infinite;
+  }
+  .step-arrow.active { color: #00c8ff; }
+  @keyframes pulse-arrow { 0%,100%{opacity:.4} 50%{opacity:1} }
+
+  .mono-box {
+    font-family: 'Courier New', monospace;
+    background: rgba(0,0,0,0.4);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 8px;
+    padding: .6rem .9rem;
+    font-size: .78rem;
+    word-break: break-all;
+    min-height: 2.5rem;
+    color: #a0f0c0;
+    position: relative;
+    transition: all .3s;
+  }
+  .mono-box.highlight { border-color: #00c8ff; color: #00c8ff; }
+  .mono-box.encrypted { color: #f0a020; border-color: rgba(240,160,32,.4); }
+  .mono-box.key-box   { color: #c080ff; border-color: rgba(192,128,255,.4); }
+
+  .input-section input {
+    background: rgba(0,0,0,0.4);
+    border: 1px solid rgba(0,200,255,0.25);
+    color: #e8f4ff;
+    border-radius: 10px;
+    font-size: 1.05rem;
+    padding: .75rem 1rem;
+    transition: border-color .3s, box-shadow .3s;
+  }
+  .input-section input:focus {
+    outline: none;
+    border-color: #00c8ff;
+    box-shadow: 0 0 16px rgba(0,200,255,0.2);
+    background: rgba(0,0,0,0.55);
+    color: #e8f4ff;
+  }
+
+  .badge-step {
+    background: rgba(0,200,255,0.12);
+    color: #00c8ff;
+    border: 1px solid rgba(0,200,255,0.3);
+    border-radius: 20px;
+    padding: .25rem .75rem;
+    font-size: .75rem;
+    font-weight: 600;
+  }
+
+  .key-segment {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 6px;
+    margin: 2px;
+    font-family: monospace;
+    font-size: .72rem;
+    font-weight: 600;
+  }
+  .key-version  { background: rgba(255,100,100,.2); color: #ff8080; border: 1px solid rgba(255,100,100,.3); }
+  .key-ts       { background: rgba(255,200,0,.2);   color: #ffd040; border: 1px solid rgba(255,200,0,.3); }
+  .key-iv       { background: rgba(0,200,255,.2);   color: #00c8ff; border: 1px solid rgba(0,200,255,.3); }
+  .key-cipher   { background: rgba(160,240,100,.2); color: #a0f064; border: 1px solid rgba(160,240,100,.3); }
+  .key-hmac     { background: rgba(192,128,255,.2); color: #c080ff; border: 1px solid rgba(192,128,255,.3); }
+
+  .anim-char {
+    display: inline-block;
+    animation: charIn .15s ease forwards;
+    opacity: 0;
+  }
+  @keyframes charIn {
+    from { opacity:0; transform: translateY(-4px); }
+    to   { opacity:1; transform: translateY(0); }
+  }
+
+  .strength-bar { height: 6px; border-radius: 3px; transition: width .4s, background .4s; }
+
+  .copy-btn {
+    position: absolute; top: .4rem; right: .4rem;
+    background: rgba(0,200,255,0.15); border: 1px solid rgba(0,200,255,0.25);
+    color: #00c8ff; border-radius: 6px; padding: 2px 8px; font-size: .7rem;
+    cursor: pointer; transition: all .2s;
+  }
+  .copy-btn:hover { background: rgba(0,200,255,0.35); }
+
+  .timeline-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: rgba(0,200,255,0.3);
+    border: 2px solid rgba(0,200,255,0.5);
+    transition: all .3s;
+  }
+  .timeline-dot.active {
+    background: #00c8ff;
+    box-shadow: 0 0 8px rgba(0,200,255,0.8);
+  }
+
+  .scanning-line {
+    position: absolute; top: 0; left: -100%; width: 60%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(0,200,255,0.07), transparent);
+    animation: scan 2.5s linear infinite;
+    pointer-events: none;
+  }
+  @keyframes scan { to { left: 200%; } }
+
+  #liveStatusBar {
+    height: 3px;
+    background: linear-gradient(90deg, #00c8ff, #7040ff, #00c8ff);
+    background-size: 200% 100%;
+    animation: gradientSlide 2s linear infinite;
+    border-radius: 3px;
+    transition: opacity .3s;
+  }
+  @keyframes gradientSlide { 0%{background-position:0%} 100%{background-position:200%} }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+
+  <!-- LEFT: Input + Live Steps -->
+  <div class="col-xl-7">
+    <div class="lab-card p-4 mb-4">
+      <div class="d-flex align-items-center gap-3 mb-3">
+        <i class="bi bi-shield-lock-fill text-info fs-3"></i>
+        <div>
+          <h5 class="mb-0 text-white">Live Encryption Visualizer</h5>
+          <small class="text-muted">Type a password to see AES-256 encryption in real time</small>
+        </div>
+      </div>
+
+      <div id="liveStatusBar" class="mb-4" style="opacity:0"></div>
+
+      <div class="input-section mb-4">
+        <label class="text-info small fw-semibold mb-2 d-block">
+          <i class="bi bi-input-cursor-text me-1"></i> Enter Password to Encrypt
+        </label>
+        <div class="position-relative">
+          <input type="password" id="plainInput" class="form-control"
+                 placeholder="Type your password here..." autocomplete="off">
+          <button class="btn btn-sm btn-outline-secondary position-absolute top-50 end-0 translate-middle-y me-2"
+                  onclick="togglePasswordVis()" id="toggleBtn" title="Show/hide">
+            <i class="bi bi-eye" id="toggleIcon"></i>
+          </button>
+        </div>
+        <div class="d-flex justify-content-between mt-2">
+          <small id="charCount" class="text-muted">0 characters</small>
+          <small id="strengthLabel" class="fw-semibold"></small>
+        </div>
+        <div class="mt-1 rounded-pill overflow-hidden" style="height:6px;background:rgba(255,255,255,0.06)">
+          <div class="strength-bar" id="strengthBar" style="width:0%"></div>
+        </div>
+      </div>
+
+      <!-- Step 1: UTF-8 Encoding -->
+      <div class="step-card p-3 mb-2" id="step1">
+        <div class="d-flex align-items-start gap-3">
+          <div class="step-num">1</div>
+          <div class="flex-grow-1">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <span class="fw-semibold text-white small">UTF-8 Byte Encoding</span>
+              <span class="badge-step">Plaintext → Bytes</span>
+            </div>
+            <p class="text-muted" style="font-size:.78rem;margin-bottom:.5rem">
+              The password string is encoded into raw bytes using UTF-8 standard.
+            </p>
+            <div class="mono-box highlight" id="utf8Out">
+              <span class="text-muted fst-italic">Waiting for input…</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="step-arrow" id="arrow1"><i class="bi bi-arrow-down-short"></i></div>
+
+      <!-- Step 2: IV Generation -->
+      <div class="step-card p-3 mb-2" id="step2">
+        <div class="d-flex align-items-start gap-3">
+          <div class="step-num">2</div>
+          <div class="flex-grow-1">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <span class="fw-semibold text-white small">Random IV Generation</span>
+              <span class="badge-step">16 bytes / 128 bits</span>
+            </div>
+            <p class="text-muted" style="font-size:.78rem;margin-bottom:.5rem">
+              A cryptographically random 128-bit Initialization Vector (IV) is generated to ensure identical passwords produce different ciphertexts.
+            </p>
+            <div class="mono-box" id="ivOut">
+              <span class="text-muted fst-italic">Waiting for input…</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="step-arrow" id="arrow2"><i class="bi bi-arrow-down-short"></i></div>
+
+      <!-- Step 3: AES-CBC Encryption -->
+      <div class="step-card p-3 mb-2" id="step3">
+        <div class="d-flex align-items-start gap-3">
+          <div class="step-num">3</div>
+          <div class="flex-grow-1">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <span class="fw-semibold text-white small">AES-128-CBC Encryption</span>
+              <span class="badge-step">Block Cipher</span>
+            </div>
+            <p class="text-muted" style="font-size:.78rem;margin-bottom:.5rem">
+              The bytes are padded to a 16-byte block boundary, then encrypted using AES-128 in CBC mode with the derived key and IV.
+            </p>
+            <div class="mono-box encrypted" id="cipherOut">
+              <span class="text-muted fst-italic">Waiting for input…</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="step-arrow" id="arrow3"><i class="bi bi-arrow-down-short"></i></div>
+
+      <!-- Step 4: HMAC-SHA256 Signing -->
+      <div class="step-card p-3 mb-2" id="step4">
+        <div class="d-flex align-items-start gap-3">
+          <div class="step-num">4</div>
+          <div class="flex-grow-1">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <span class="fw-semibold text-white small">HMAC-SHA256 Authentication</span>
+              <span class="badge-step">32 byte MAC</span>
+            </div>
+            <p class="text-muted" style="font-size:.78rem;margin-bottom:.5rem">
+              An HMAC-SHA256 signature is computed over the version, timestamp, IV and ciphertext to guarantee integrity and authenticity.
+            </p>
+            <div class="mono-box key-box" id="hmacOut">
+              <span class="text-muted fst-italic">Waiting for input…</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="step-arrow" id="arrow4"><i class="bi bi-arrow-down-short"></i></div>
+
+      <!-- Step 5: Final Token -->
+      <div class="step-card p-3" id="step5">
+        <div class="d-flex align-items-start gap-3">
+          <div class="step-num">5</div>
+          <div class="flex-grow-1">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <span class="fw-semibold text-white small">Fernet Token (URL-safe Base64)</span>
+              <span class="badge-step">Final Output</span>
+            </div>
+            <p class="text-muted" style="font-size:.78rem;margin-bottom:.5rem">
+              All components are concatenated and encoded as a URL-safe Base64 string. This is what gets saved to the database.
+            </p>
+            <div class="mono-box encrypted position-relative" id="tokenOut">
+              <div class="scanning-line" id="scanLine" style="display:none"></div>
+              <span class="text-muted fst-italic">Waiting for input…</span>
+              <button class="copy-btn" id="copyBtn" style="display:none" onclick="copyToken()">
+                <i class="bi bi-clipboard me-1"></i>Copy
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Key Info + Token Anatomy -->
+  <div class="col-xl-5">
+
+    <!-- Encryption Key Info -->
+    <div class="lab-card p-4 mb-4">
+      <div class="d-flex align-items-center gap-2 mb-3">
+        <i class="bi bi-key-fill text-warning fs-5"></i>
+        <h6 class="mb-0 text-white">Encryption Key Details</h6>
+      </div>
+      <table class="table table-borderless table-sm text-white mb-0" style="font-size:.82rem">
+        <tbody>
+          <tr>
+            <td class="text-muted">Algorithm</td>
+            <td><span class="badge bg-info bg-opacity-25 text-info">AES-128-CBC + HMAC-SHA256</span></td>
+          </tr>
+          <tr>
+            <td class="text-muted">Key Format</td>
+            <td>Fernet (URL-safe Base64 of 32 bytes)</td>
+          </tr>
+          <tr>
+            <td class="text-muted">Key Length</td>
+            <td>256 bits (32 bytes total: 128-bit enc + 128-bit signing)</td>
+          </tr>
+          <tr>
+            <td class="text-muted">Key Source</td>
+            <td id="keySource"><span class="text-muted">Loading…</span></td>
+          </tr>
+          <tr>
+            <td class="text-muted">IV Size</td>
+            <td>128 bits (16 bytes, randomly generated per encryption)</td>
+          </tr>
+          <tr>
+            <td class="text-muted">Padding</td>
+            <td>PKCS7 (16-byte blocks)</td>
+          </tr>
+          <tr>
+            <td class="text-muted">MAC</td>
+            <td>HMAC-SHA256 (32 bytes)</td>
+          </tr>
+        </tbody>
+      </table>
+      <hr style="border-color:rgba(255,255,255,0.08)">
+      <small class="text-muted d-block mb-2">Your active Fernet Key (public part only — signing key prefix):</small>
+      <div class="mono-box key-box" id="keyDisplay" style="font-size:.7rem">
+        {{ key_preview }}
+      </div>
+    </div>
+
+    <!-- Token Anatomy -->
+    <div class="lab-card p-4 mb-4" id="anatomyCard">
+      <div class="d-flex align-items-center gap-2 mb-3">
+        <i class="bi bi-diagram-3-fill text-info fs-5"></i>
+        <h6 class="mb-0 text-white">Token Anatomy</h6>
+        <small class="text-muted ms-auto">hover to highlight</small>
+      </div>
+      <p class="text-muted small mb-3">A Fernet token is: <code>Version | Timestamp | IV | Ciphertext | HMAC</code></p>
+      <div id="tokenAnatomyDisplay" class="d-flex flex-wrap gap-1 mb-3" style="min-height:2rem">
+        <span class="text-muted fst-italic small">Encrypt something to see the token breakdown…</span>
+      </div>
+      <div class="d-flex flex-wrap gap-2 mt-2" style="font-size:.72rem">
+        <span class="key-segment key-version">Version (1B)</span>
+        <span class="key-segment key-ts">Timestamp (8B)</span>
+        <span class="key-segment key-iv">IV (16B)</span>
+        <span class="key-segment key-cipher">Ciphertext (variable)</span>
+        <span class="key-segment key-hmac">HMAC (32B)</span>
+      </div>
+    </div>
+
+    <!-- Token Stats -->
+    <div class="lab-card p-4" id="statsCard">
+      <div class="d-flex align-items-center gap-2 mb-3">
+        <i class="bi bi-bar-chart-fill text-success fs-5"></i>
+        <h6 class="mb-0 text-white">Encryption Metrics</h6>
+      </div>
+      <div class="row g-3 text-center">
+        <div class="col-6">
+          <div class="step-card p-3">
+            <div class="fs-4 fw-bold text-info" id="metricPlainLen">—</div>
+            <div class="text-muted small">Plaintext bytes</div>
+          </div>
+        </div>
+        <div class="col-6">
+          <div class="step-card p-3">
+            <div class="fs-4 fw-bold text-warning" id="metricEncLen">—</div>
+            <div class="text-muted small">Encrypted bytes</div>
+          </div>
+        </div>
+        <div class="col-6">
+          <div class="step-card p-3">
+            <div class="fs-4 fw-bold text-success" id="metricExpansion">—</div>
+            <div class="text-muted small">Size expansion</div>
+          </div>
+        </div>
+        <div class="col-6">
+          <div class="step-card p-3">
+            <div class="fs-4 fw-bold text-purple" id="metricTime" style="color:#c080ff">—</div>
+            <div class="text-muted small">Encrypt time (ms)</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const API_URL = "{{ url_for('vault.api_encrypt_demo') }}";
+let encryptTimer = null;
+let isVisible = false;
+
+const input       = document.getElementById('plainInput');
+const utf8Out     = document.getElementById('utf8Out');
+const ivOut       = document.getElementById('ivOut');
+const cipherOut   = document.getElementById('cipherOut');
+const hmacOut     = document.getElementById('hmacOut');
+const tokenOut    = document.getElementById('tokenOut');
+const statusBar   = document.getElementById('liveStatusBar');
+const copyBtn     = document.getElementById('copyBtn');
+const scanLine    = document.getElementById('scanLine');
+
+// ── Toggle password visibility ─────────────────────────────────────────────
+function togglePasswordVis() {
+  isVisible = !isVisible;
+  input.type = isVisible ? 'text' : 'password';
+  document.getElementById('toggleIcon').className = isVisible ? 'bi bi-eye-slash' : 'bi bi-eye';
+}
+
+// ── Strength meter ─────────────────────────────────────────────────────────
+function updateStrength(pw) {
+  let score = 0;
+  if (pw.length >= 8) score++;
+  if (pw.length >= 12) score++;
+  if (/[A-Z]/.test(pw)) score++;
+  if (/[0-9]/.test(pw)) score++;
+  if (/[^A-Za-z0-9]/.test(pw)) score++;
+  const bar = document.getElementById('strengthBar');
+  const lbl = document.getElementById('strengthLabel');
+  const pct = Math.min(score / 5 * 100, 100);
+  bar.style.width = pct + '%';
+  if (score <= 1)      { bar.style.background = '#ff4040'; lbl.textContent = 'Very Weak'; lbl.style.color = '#ff4040'; }
+  else if (score <= 2) { bar.style.background = '#ff9020'; lbl.textContent = 'Weak';      lbl.style.color = '#ff9020'; }
+  else if (score <= 3) { bar.style.background = '#ffd040'; lbl.textContent = 'Fair';      lbl.style.color = '#ffd040'; }
+  else if (score <= 4) { bar.style.background = '#40d080'; lbl.textContent = 'Strong';    lbl.style.color = '#40d080'; }
+  else                 { bar.style.background = '#00c8ff'; lbl.textContent = 'Very Strong'; lbl.style.color = '#00c8ff'; }
+}
+
+// ── Animate text into a mono box ──────────────────────────────────────────
+function animateText(el, text, cls = '') {
+  el.className = 'mono-box ' + cls;
+  el.innerHTML = '';
+  const frag = document.createDocumentFragment();
+  [...text].forEach((ch, i) => {
+    const sp = document.createElement('span');
+    sp.className = 'anim-char';
+    sp.style.animationDelay = Math.min(i * 6, 300) + 'ms';
+    sp.textContent = ch;
+    frag.appendChild(sp);
+  });
+  el.appendChild(frag);
+}
+
+// ── Set a step card active ────────────────────────────────────────────────
+function setActive(num, on) {
+  const card  = document.getElementById('step' + num);
+  const arrow = document.getElementById('arrow' + num);
+  if (on) { card.classList.add('active'); if (arrow) arrow.classList.add('active'); }
+  else    { card.classList.remove('active'); if (arrow) arrow.classList.remove('active'); }
+}
+function resetSteps() {
+  for (let i = 1; i <= 5; i++) setActive(i, false);
+}
+
+// ── Token anatomy breakdown ───────────────────────────────────────────────
+function renderAnatomy(data) {
+  const el = document.getElementById('tokenAnatomyDisplay');
+  if (!data.anatomy) { el.innerHTML = '<span class="text-muted small fst-italic">Not available</span>'; return; }
+  const a = data.anatomy;
+  el.innerHTML = `
+    <span class="key-segment key-version" title="Version byte (0x80)">${a.version || '—'}</span>
+    <span class="key-segment key-ts"      title="Timestamp (8 bytes Unix time)">${a.timestamp || '—'}</span>
+    <span class="key-segment key-iv"      title="IV (16 bytes random)">${a.iv || '—'}</span>
+    <span class="key-segment key-cipher"  title="AES-CBC Ciphertext">${a.ciphertext || '—'}</span>
+    <span class="key-segment key-hmac"    title="HMAC-SHA256 (32 bytes)">${a.hmac || '—'}</span>
+  `;
+}
+
+// ── Main encrypt flow ─────────────────────────────────────────────────────
+async function runEncryption(pw) {
+  if (!pw) {
+    resetSteps();
+    statusBar.style.opacity = '0';
+    [utf8Out, ivOut, cipherOut, hmacOut, tokenOut].forEach(el => {
+      el.innerHTML = '<span class="text-muted fst-italic">Waiting for input…</span>';
+      el.className = 'mono-box';
+    });
+    copyBtn.style.display = 'none';
+    scanLine.style.display = 'none';
+    document.getElementById('tokenAnatomyDisplay').innerHTML = '<span class="text-muted fst-italic small">Encrypt something to see the token breakdown…</span>';
+    ['metricPlainLen','metricEncLen','metricExpansion','metricTime'].forEach(id => document.getElementById(id).textContent = '—');
+    return;
+  }
+
+  statusBar.style.opacity = '1';
+  const t0 = performance.now();
+
+  try {
+    const resp = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: pw })
+    });
+    const data = await resp.json();
+    if (!data.success) throw new Error(data.error || 'Unknown error');
+
+    const elapsed = (performance.now() - t0).toFixed(1);
+
+    // Step 1 – UTF-8
+    setActive(1, true);
+    animateText(utf8Out, data.utf8_hex, 'highlight');
+    await sleep(120);
+
+    // Step 2 – IV
+    setActive(2, true);
+    animateText(ivOut, data.iv_hex, '');
+    await sleep(120);
+
+    // Step 3 – Ciphertext
+    setActive(3, true);
+    animateText(cipherOut, data.cipher_hex, 'encrypted');
+    await sleep(120);
+
+    // Step 4 – HMAC
+    setActive(4, true);
+    animateText(hmacOut, data.hmac_hex, 'key-box');
+    await sleep(120);
+
+    // Step 5 – Token
+    setActive(5, true);
+    scanLine.style.display = 'block';
+    tokenOut.className = 'mono-box encrypted position-relative';
+    tokenOut.innerHTML = '';
+    const tokenText = document.createElement('span');
+    tokenText.id = 'tokenText';
+    tokenText.className = 'anim-char';
+    tokenText.style.animationDelay = '0ms';
+    tokenText.textContent = data.token;
+    tokenOut.appendChild(tokenText);
+    tokenOut.appendChild(copyBtn);
+    copyBtn.style.display = '';
+
+    // Anatomy
+    renderAnatomy(data);
+
+    // Metrics
+    document.getElementById('metricPlainLen').textContent = data.plain_bytes;
+    document.getElementById('metricEncLen').textContent   = data.token_bytes;
+    document.getElementById('metricExpansion').textContent = 'x' + (data.token_bytes / Math.max(data.plain_bytes,1)).toFixed(1);
+    document.getElementById('metricTime').textContent      = elapsed;
+
+    statusBar.style.opacity = '0';
+
+  } catch(err) {
+    console.error(err);
+    statusBar.style.opacity = '0';
+    tokenOut.innerHTML = '<span class="text-danger small"><i class="bi bi-exclamation-triangle me-1"></i>' + err.message + '</span>';
+  }
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+input.addEventListener('input', () => {
+  const pw = input.value;
+  document.getElementById('charCount').textContent = pw.length + ' character' + (pw.length !== 1 ? 's' : '');
+  if (pw) updateStrength(pw);
+  resetSteps();
+  clearTimeout(encryptTimer);
+  encryptTimer = setTimeout(() => runEncryption(pw), 400);
+});
+
+// ── Copy token ────────────────────────────────────────────────────────────
+function copyToken() {
+  const el = document.getElementById('tokenText');
+  if (!el) return;
+  navigator.clipboard.writeText(el.textContent).then(() => {
+    copyBtn.innerHTML = '<i class="bi bi-check2 me-1"></i>Copied!';
+    setTimeout(() => { copyBtn.innerHTML = '<i class="bi bi-clipboard me-1"></i>Copy'; }, 2000);
+  });
+}
+
+// ── Key source label ──────────────────────────────────────────────────────
+fetch('/api/key-source').then(r => r.json()).then(d => {
+  document.getElementById('keySource').innerHTML =
+    d.source === 'env'
+      ? '<span class="badge bg-success bg-opacity-25 text-success">Environment Variable (ENCRYPTION_KEY)</span>'
+      : '<span class="badge bg-warning bg-opacity-25 text-warning">Local Key File</span>';
+}).catch(() => {});
+</script>
+{% endblock %}
