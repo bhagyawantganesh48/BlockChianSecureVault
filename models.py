@@ -78,7 +78,7 @@ class Block:
             timestamp=row["timestamp"],
             website=row["website"] or "",
             action=row["action"],
-            user=row["user"],
+            user=row.get("user_account", row.get("user")),
             previous_hash=row["previous_hash"],
             current_hash=row["current_hash"],
             nonce=row["nonce"],

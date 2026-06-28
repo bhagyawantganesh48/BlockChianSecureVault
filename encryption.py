@@ -25,6 +25,10 @@ class EncryptionManager:
 
     def load_or_create_key(self) -> bytes:
         """Load existing key or generate a new Fernet key."""
+        env_key = os.environ.get("ENCRYPTION_KEY")
+        if env_key:
+            return env_key.encode("utf-8")
+
         self._ensure_instance_dir()
         if os.path.exists(self.key_file):
             with open(self.key_file, "rb") as handle:

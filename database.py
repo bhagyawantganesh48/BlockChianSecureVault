@@ -1,73 +1,122 @@
 """
-SQLite database connection, schema initialization, and data access layer.
+SQLite and PostgreSQL database connection, schema initialization, and data access layer.
 """
 
 import sqlite3
+import os
 from contextlib import contextmanager
 from typing import Any, List, Optional, Tuple
 
 import config
 from models import Block, User, VaultEntry, utc_now_iso
 
+DB_URL = os.environ.get("DATABASE_URL")
+if DB_URL:
+    import psycopg2
+    from psycopg2.extras import DictCursor
+
 
 @contextmanager
 def get_connection():
-    """Provide a SQLite connection with row factory and auto-commit."""
-    conn = sqlite3.connect(config.DATABASE_PATH)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys = ON")
-    try:
-        yield conn
-        conn.commit()
-    except Exception:
-        conn.rollback()
-        raise
-    finally:
-        conn.close()
+    if DB_URL:
+        conn = psycopg2.connect(DB_URL, cursor_factory=DictCursor)
+        try:
+            yield conn
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
+    else:
+        conn = sqlite3.connect(config.DATABASE_PATH)
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA foreign_keys = ON")
+        try:
+            yield conn
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
+
+
+def db_execute(conn, query: str, params: tuple = ()):
+    if DB_URL:
+        query = query.replace("?", "%s")
+        cursor = conn.cursor()
+        cursor.execute(query, params)
+        return cursor
+    else:
+        return conn.execute(query, params)
+
+
+def db_insert_returning_id(conn, query: str, params: tuple = ()) -> int:
+    if DB_URL:
+        query = query.replace("?", "%s")
+        query = query.strip()
+        if not query.endswith("RETURNING id"):
+            query += " RETURNING id"
+        cursor = conn.cursor()
+        cursor.execute(query, params)
+        return cursor.fetchone()["id"]
+    else:
+        cursor = conn.execute(query, params)
+        return cursor.lastrowid
 
 
 def init_db() -> None:
     """Create database tables if they do not exist."""
+    schema = """
+        CREATE TABLE IF NOT EXISTS users (
+            id {pk_type},
+            username TEXT NOT NULL UNIQUE,
+            email TEXT NOT NULL UNIQUE,
+            master_password_hash TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS vault (
+            id {pk_type},
+            user_id INTEGER NOT NULL,
+            website TEXT NOT NULL,
+            username TEXT NOT NULL,
+            encrypted_password TEXT NOT NULL,
+            category TEXT DEFAULT 'General',
+            notes TEXT DEFAULT '',
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS blockchain (
+            block_number INTEGER PRIMARY KEY,
+            timestamp TEXT NOT NULL,
+            website TEXT,
+            action TEXT NOT NULL,
+            user_account TEXT NOT NULL,
+            previous_hash TEXT NOT NULL,
+            current_hash TEXT NOT NULL,
+            nonce INTEGER NOT NULL
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_vault_user_id ON vault(user_id);
+        CREATE INDEX IF NOT EXISTS idx_vault_website ON vault(website);
+        CREATE INDEX IF NOT EXISTS idx_blockchain_user ON blockchain(user_account);
+    """
+    
+    if DB_URL:
+        schema = schema.format(pk_type="SERIAL PRIMARY KEY")
+    else:
+        schema = schema.format(pk_type="INTEGER PRIMARY KEY AUTOINCREMENT")
+
     with get_connection() as conn:
-        conn.executescript(
-            """
-            CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                username TEXT NOT NULL UNIQUE,
-                email TEXT NOT NULL UNIQUE,
-                master_password_hash TEXT NOT NULL,
-                created_at TEXT NOT NULL
-            );
-
-            CREATE TABLE IF NOT EXISTS vault (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER NOT NULL,
-                website TEXT NOT NULL,
-                username TEXT NOT NULL,
-                encrypted_password TEXT NOT NULL,
-                category TEXT DEFAULT 'General',
-                notes TEXT DEFAULT '',
-                created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL,
-                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-            );
-
-            CREATE TABLE IF NOT EXISTS blockchain (
-                block_number INTEGER PRIMARY KEY,
-                timestamp TEXT NOT NULL,
-                website TEXT,
-                action TEXT NOT NULL,
-                user TEXT NOT NULL,
-                previous_hash TEXT NOT NULL,
-                current_hash TEXT NOT NULL,
-                nonce INTEGER NOT NULL
-            );
-
-            CREATE INDEX IF NOT EXISTS idx_vault_user_id ON vault(user_id);
-            CREATE INDEX IF NOT EXISTS idx_vault_website ON vault(website);
-            CREATE INDEX IF NOT EXISTS idx_blockchain_user ON blockchain(user);
-            """
-        )
+        if DB_URL:
+            cursor = conn.cursor()
+            cursor.execute(schema)
+        else:
+            conn.executescript(schema)
 
 
 # ---------------------------------------------------------------------------
@@ -76,36 +125,36 @@ def init_db() -> None:
 
 def create_user(username: str, email: str, password_hash: str) -> int:
     with get_connection() as conn:
-        cursor = conn.execute(
+        return db_insert_returning_id(
+            conn,
             """
             INSERT INTO users (username, email, master_password_hash, created_at)
             VALUES (?, ?, ?, ?)
             """,
             (username, email, password_hash, utc_now_iso()),
         )
-        return cursor.lastrowid
 
 
 def get_user_by_username(username: str) -> Optional[User]:
     with get_connection() as conn:
-        row = conn.execute(
-            "SELECT * FROM users WHERE username = ?", (username,)
+        row = db_execute(
+            conn, "SELECT * FROM users WHERE username = ?", (username,)
         ).fetchone()
         return User.from_row(row) if row else None
 
 
 def get_user_by_email(email: str) -> Optional[User]:
     with get_connection() as conn:
-        row = conn.execute(
-            "SELECT * FROM users WHERE email = ?", (email,)
+        row = db_execute(
+            conn, "SELECT * FROM users WHERE email = ?", (email,)
         ).fetchone()
         return User.from_row(row) if row else None
 
 
 def get_user_by_id(user_id: int) -> Optional[User]:
     with get_connection() as conn:
-        row = conn.execute(
-            "SELECT * FROM users WHERE id = ?", (user_id,)
+        row = db_execute(
+            conn, "SELECT * FROM users WHERE id = ?", (user_id,)
         ).fetchone()
         return User.from_row(row) if row else None
 
@@ -124,7 +173,8 @@ def create_vault_entry(
 ) -> int:
     now = utc_now_iso()
     with get_connection() as conn:
-        cursor = conn.execute(
+        return db_insert_returning_id(
+            conn,
             """
             INSERT INTO vault
                 (user_id, website, username, encrypted_password, category, notes, created_at, updated_at)
@@ -132,12 +182,12 @@ def create_vault_entry(
             """,
             (user_id, website, username, encrypted_password, category, notes, now, now),
         )
-        return cursor.lastrowid
 
 
 def get_vault_entry(entry_id: int, user_id: int) -> Optional[VaultEntry]:
     with get_connection() as conn:
-        row = conn.execute(
+        row = db_execute(
+            conn,
             "SELECT * FROM vault WHERE id = ? AND user_id = ?",
             (entry_id, user_id),
         ).fetchone()
@@ -154,7 +204,8 @@ def update_vault_entry(
     notes: str,
 ) -> bool:
     with get_connection() as conn:
-        cursor = conn.execute(
+        cursor = db_execute(
+            conn,
             """
             UPDATE vault
             SET website = ?, username = ?, encrypted_password = ?,
@@ -177,7 +228,8 @@ def update_vault_entry(
 
 def delete_vault_entry(entry_id: int, user_id: int) -> bool:
     with get_connection() as conn:
-        cursor = conn.execute(
+        cursor = db_execute(
+            conn,
             "DELETE FROM vault WHERE id = ? AND user_id = ?",
             (entry_id, user_id),
         )
@@ -217,18 +269,23 @@ def get_vault_entries(
     offset = (max(page, 1) - 1) * per_page
 
     with get_connection() as conn:
-        total = conn.execute(
-            f"SELECT COUNT(*) FROM vault WHERE {where_clause}", params
-        ).fetchone()[0]
+        total_row = db_execute(
+            conn,
+            f"SELECT COUNT(*) as count FROM vault WHERE {where_clause}",
+            tuple(params),
+        ).fetchone()
+        
+        total = total_row["count"] if DB_URL else total_row[0]
 
-        rows = conn.execute(
+        rows = db_execute(
+            conn,
             f"""
             SELECT * FROM vault
             WHERE {where_clause}
             ORDER BY {sort_by} {sort_order}
             LIMIT ? OFFSET ?
             """,
-            params + [per_page, offset],
+            tuple(params + [per_page, offset]),
         ).fetchall()
 
     return [VaultEntry.from_row(row) for row in rows], total
@@ -236,7 +293,8 @@ def get_vault_entries(
 
 def get_vault_categories(user_id: int) -> List[str]:
     with get_connection() as conn:
-        rows = conn.execute(
+        rows = db_execute(
+            conn,
             """
             SELECT DISTINCT category FROM vault
             WHERE user_id = ? AND category IS NOT NULL AND category != ''
@@ -249,14 +307,16 @@ def get_vault_categories(user_id: int) -> List[str]:
 
 def count_vault_entries(user_id: int) -> int:
     with get_connection() as conn:
-        return conn.execute(
-            "SELECT COUNT(*) FROM vault WHERE user_id = ?", (user_id,)
-        ).fetchone()[0]
+        row = db_execute(
+            conn, "SELECT COUNT(*) as count FROM vault WHERE user_id = ?", (user_id,)
+        ).fetchone()
+        return row["count"] if DB_URL else row[0]
 
 
 def get_all_vault_entries(user_id: int) -> List[VaultEntry]:
     with get_connection() as conn:
-        rows = conn.execute(
+        rows = db_execute(
+            conn,
             "SELECT * FROM vault WHERE user_id = ? ORDER BY updated_at DESC",
             (user_id,),
         ).fetchall()
@@ -269,10 +329,11 @@ def get_all_vault_entries(user_id: int) -> List[VaultEntry]:
 
 def save_block(block: Block) -> None:
     with get_connection() as conn:
-        conn.execute(
+        db_execute(
+            conn,
             """
             INSERT INTO blockchain
-                (block_number, timestamp, website, action, user, previous_hash, current_hash, nonce)
+                (block_number, timestamp, website, action, user_account, previous_hash, current_hash, nonce)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
@@ -291,21 +352,22 @@ def save_block(block: Block) -> None:
 def get_all_blocks(username: str = "") -> List[Block]:
     with get_connection() as conn:
         if username:
-            rows = conn.execute(
-                "SELECT * FROM blockchain WHERE user = ? ORDER BY block_number ASC",
+            rows = db_execute(
+                conn,
+                "SELECT * FROM blockchain WHERE user_account = ? ORDER BY block_number ASC",
                 (username,),
             ).fetchall()
         else:
-            rows = conn.execute(
-                "SELECT * FROM blockchain ORDER BY block_number ASC"
+            rows = db_execute(
+                conn, "SELECT * FROM blockchain ORDER BY block_number ASC"
             ).fetchall()
     return [Block.from_row(row) for row in rows]
 
 
 def get_last_block() -> Optional[Block]:
     with get_connection() as conn:
-        row = conn.execute(
-            "SELECT * FROM blockchain ORDER BY block_number DESC LIMIT 1"
+        row = db_execute(
+            conn, "SELECT * FROM blockchain ORDER BY block_number DESC LIMIT 1"
         ).fetchone()
         return Block.from_row(row) if row else None
 
@@ -313,18 +375,21 @@ def get_last_block() -> Optional[Block]:
 def count_blocks(username: str = "") -> int:
     with get_connection() as conn:
         if username:
-            return conn.execute(
-                "SELECT COUNT(*) FROM blockchain WHERE user = ?", (username,)
-            ).fetchone()[0]
-        return conn.execute("SELECT COUNT(*) FROM blockchain").fetchone()[0]
+            row = db_execute(
+                conn, "SELECT COUNT(*) as count FROM blockchain WHERE user_account = ?", (username,)
+            ).fetchone()
+        else:
+            row = db_execute(conn, "SELECT COUNT(*) as count FROM blockchain").fetchone()
+        return row["count"] if DB_URL else row[0]
 
 
 def get_recent_blocks(username: str, limit: int = 5) -> List[Block]:
     with get_connection() as conn:
-        rows = conn.execute(
+        rows = db_execute(
+            conn,
             """
             SELECT * FROM blockchain
-            WHERE user = ?
+            WHERE user_account = ?
             ORDER BY block_number DESC
             LIMIT ?
             """,
