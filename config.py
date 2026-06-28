@@ -14,11 +14,17 @@ BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 SECRET_KEY = os.environ.get("FLASK_SECRET_KEY", "dev-secret-change-in-production")
 DEBUG = os.environ.get("FLASK_DEBUG", "False").lower() == "true"
 
+# Use /tmp on Vercel since the root filesystem is read-only
+if os.environ.get("VERCEL"):
+    DATA_DIR = "/tmp"
+else:
+    DATA_DIR = BASE_DIR
+
 # Database
-DATABASE_PATH = os.path.join(BASE_DIR, "database.db")
+DATABASE_PATH = os.path.join(DATA_DIR, "database.db")
 
 # Encryption key storage
-INSTANCE_DIR = os.path.join(BASE_DIR, "instance")
+INSTANCE_DIR = os.path.join(DATA_DIR, "instance")
 SECRET_KEY_FILE = os.path.join(INSTANCE_DIR, "secret.key")
 
 # Session security
